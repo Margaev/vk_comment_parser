@@ -1,40 +1,50 @@
 import requests
 import time
+import re
 
 current_time = time.time()
 
 
 def main():
     group_id = -67034604
+    app_id = ###
     count = 5
-    token = '#####'
-    # auth('###')
+    with open('config.txt', 'r') as f:
+        token = f.read()
     time_period = set_time_period()
     if not time_period:
         return
-    # app_id = ###
-    # auth(app_id)
 
-    try:
-        comments = get_all_comments(group_id, token, count, time_period)
-    except KeyError:
-        print('token не действителен')
-        return
-    else:
-        customers_list = get_customers_list(comments, group_id)
-        if customers_list:
-            with open('Покупатели.txt', 'w', encoding="utf-8") as f:
-                for key, value in customers_list.items():
-                    if key.find('-') == -1:
-                        values = value.split('|')
-                        user_name = get_user_name(key, token)
-                        f.write(user_name + '\t' + 'https://vk.com/id' + key + '\n')
-                        for s in values:
-                            s += '\n'
-                            f.write(s)
-                        f.write('\n')
+    is_parsed = False
+    token_is_valid = True
+    while not is_parsed:
+        if token_is_valid:
+            try:
+                comments = get_all_comments(group_id, token, count, time_period)
+                customers_list = get_customers_list(comments, group_id)
+                if customers_list:
+                    with open('Покупатели.txt', 'w', encoding="utf-8") as f:
+                        for key, value in customers_list.items():
+                            if key.find('-') == -1:
+                                values = value.split('|')
+                                user_name = get_user_name(key, token)
+                                f.write(user_name + '\t' + 'https://vk.com/id' + key + '\n')
+                                for s in values:
+                                    s += '\n'
+                                    f.write(s)
+                                f.write('\n')
+                else:
+                    print('Не найдено коментариев за заданный период времени')
+                is_parsed = True
+            except KeyError:
+                print('Токен не действителен')
+                token_is_valid = False
         else:
-            print('Не найдено коментариев за заданный период времени')
+            url = auth(app_id)
+            token = re.search('access_token=(.*)&expires_in', url).group(1)
+            with open('config.txt', 'w') as f:
+                f.write(token)
+            token_is_valid = True
 
 
 def auth(app_id, redirect_uri=r'https://oauth.vk.com/blank.html'):
@@ -47,7 +57,9 @@ def auth(app_id, redirect_uri=r'https://oauth.vk.com/blank.html'):
         'v': '5.85'
     }
     r = requests.get('https://oauth.vk.com/authorize', params=requests_params)
-    print(r.url)
+    print('Скопируйте ссылку и вставьте в адресную строку в браузере: ', r.url)
+    url = input('Вствьте ссылку из адресной строки браузера: ')
+    return url
 
 
 def get_customers_list(comments, group_id):
