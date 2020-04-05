@@ -1,6 +1,7 @@
 import requests
 import time
 import re
+import os
 
 current_time = time.time()
 
@@ -9,8 +10,12 @@ def main():
     group_id = -67034604
     app_id = ###
     count = 5
-    with open('config.txt', 'r') as f:
-        token = f.read()
+    if os.path.exists('config.txt'):
+        with open('config.txt', 'r') as f:
+            token = f.read()
+    else:
+        token_is_valid = False
+        
     time_period = set_time_period()
     if not time_period:
         return
