@@ -10,9 +10,11 @@ def main():
     group_id = -67034604
     app_id = ###
     count = 5
+    token = ''
     if os.path.exists('config.txt'):
         with open('config.txt', 'r') as f:
             token = f.read()
+            token_is_valid = True
     else:
         token_is_valid = False
         
@@ -21,7 +23,6 @@ def main():
         return
 
     is_parsed = False
-    token_is_valid = True
     while not is_parsed:
         if token_is_valid:
             try:
@@ -75,10 +76,17 @@ def get_customers_list(comments, group_id):
         t = t.replace('\n', ' ')
         if customers_list.get(key) is None:
             customers_list[key] = ''
+
+        # value = customers_list.get(key) \
+        #     + time.strftime("%d %b %Y %H:%M", time.localtime(int(comment.get('date')))) + '\t' \
+        #     + 'https://vk.com/photo' + str(group_id) + '_' + str(comment.get('pid')) \
+        #     + '\t' + '[' + t + ']' + '|'
+
         value = customers_list.get(key) \
+            + '[' + t + ']' + '\t' \
             + time.strftime("%d %b %Y %H:%M", time.localtime(int(comment.get('date')))) + '\t' \
-            + 'https://vk.com/photo' + str(group_id) + '_' + str(comment.get('pid')) \
-            + '\t' + '[' + t + ']' + '|'
+            + 'https://vk.com/photo' + str(group_id) + '_' + str(comment.get('pid')) + '|'
+
         customers_list[key] = value
         if customers_list.get(key) == '':
             customers_list.pop(key, None)
