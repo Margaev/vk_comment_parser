@@ -2,29 +2,38 @@ import requests
 import time
 import re
 import os
+import json
 
 current_time = time.time()
 
 
 def main():
-    group_id = -67034604
-    app_id = ###
-    count = 5
+    group_id = '-67034604'
+    app_id = '7557721'
+    count = 100
     token = ''
-    if os.path.exists('config.txt'):
-        with open('config.txt', 'r') as f:
-            token = f.read()
+    if os.path.exists('config.json'):
+        with open('config.json', 'r') as f:
+            data = json.load(f)
+            token = data['token']
             token_is_valid = True
+            if 'time_period' in data:
+                time_period = get_time_period()
+            else:
+                time_period = set_time_period()
+                if token_is_valid:
+                    data = {
+                        'token': token,
+                        'time_period': time_period
+                    }
+                    json.dump(data, f)
     else:
         token_is_valid = False
-        
-    time_period = set_time_period()
-    if not time_period:
-        return
+        time_period = set_time_period()
 
     is_parsed = False
     while not is_parsed:
-        if token_is_valid:
+        if token_is_valid and time_period:
             try:
                 comments = get_all_comments(group_id, token, count, time_period)
                 customers_list = get_customers_list(comments, group_id)
@@ -42,14 +51,25 @@ def main():
                 else:
                     print('Не найдено коментариев за заданный период времени')
                 is_parsed = True
+
+                with open('config.json', 'w') as f:
+                    data = {
+                        'token': token,
+                        'time_period': time.time()
+                    }
+                    json.dump(data, f)
             except KeyError:
                 print('Токен не действителен')
                 token_is_valid = False
         else:
             url = auth(app_id)
             token = re.search('access_token=(.*)&expires_in', url).group(1)
-            with open('config.txt', 'w') as f:
-                f.write(token)
+            with open('config.json', 'w') as f:
+                data = {
+                    'token': token,
+                    'time_period': time_period
+                }
+                json.dump(data, f)
             token_is_valid = True
 
 
@@ -106,9 +126,10 @@ def get_all_comments(group_id, token, count, time_period):
     while True:
         r = requests.get('https://api.vk.com/method/photos.getAllComments', params=request_params).json()
         r = r['response']['items']
+        r = list(filter(lambda x: x if x['date'] > time_period else None, r))
         comments.extend(r)
-        request_params['offset'] += 5
-        if (current_time - int(comments[len(comments) - 1]['date']) > time_period) or (len(comments) < 5):
+        request_params['offset'] += count
+        if len(comments) < count:
             break
         time.sleep(0.25)
     return comments
@@ -133,7 +154,7 @@ def set_time_period():
     time_period = input('За сколько дней собрать комментарии: ')
     if time_period.isdigit():
         try:
-            time_period = int(time_period) * 86400
+            time_period = time.time() - int(time_period) * 86400
         except ValueError:
             print('Нужно ввести целое число дней')
             return None
@@ -141,6 +162,15 @@ def set_time_period():
     else:
         print('Неверные входные данные')
         return None
+
+
+def get_time_period():
+    with open('config.json', 'r') as f:
+        data = json.load(f)
+        time_period = data['time_period']
+        if not time_period:
+            time_period = set_time_period()
+        return time_period
 
 
 def check_comment(t):
